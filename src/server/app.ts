@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isValidLicenseKey, normalizeLicenseKey } from "@/lib/keys";
+import { attachmentHeader } from "@/lib/http";
+import { adminApp } from "@/server/admin";
 import {
   DEVICE_TOKEN_COOKIE,
   DEVICE_TOKEN_MAX_AGE,
@@ -48,17 +50,6 @@ async function findOwnedContent(
     .first<OwnedContent>();
 }
 
-/**
- * Content-Disposition: attachment ヘッダを組み立てる。
- * 日本語等の非ASCIIファイル名は filename*（RFC 5987）で渡し、
- * 互換のため ASCII フォールバックも併記する。
- */
-function attachmentHeader(filename: string): string {
-  const fallback = filename
-    .replace(/[^\x20-\x7E]/g, "_")
-    .replace(/["\\]/g, "_");
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
-}
 
 // Honoバックエンド本体。Next.js の Route Handler から handle() 経由で呼ばれる。
 // Cloudflare バインディング(D1: env.DB / R2: env.BUCKET / RATE_LIMITER)へは
@@ -297,7 +288,9 @@ const routes = app
     headers.set("ETag", obj.httpEtag);
     headers.set("Cache-Control", "private, max-age=3600");
     return new Response(obj.body, { headers });
-  });
+  })
+  // 管理API（/api/admin/*）。保護は Cloudflare Access で行う前提。
+  .route("/admin", adminApp);
 
 export type AppType = typeof routes;
 export { app };

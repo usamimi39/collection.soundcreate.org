@@ -38,6 +38,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# cloudflare local secrets — 絶対にコミットしない（R2 等の認証情報を含む）
+.dev.vars
+.dev.vars.*
+
 # vercel
 .vercel
 
