@@ -67,6 +67,8 @@ const app = new Hono().basePath("/api");
 
 // メソッドチェーンで定義することで routes の型を AppType として書き出し、
 // フロント側の hono/client (RPC) で型安全に呼び出せるようにする。
+// （routes は値としては未使用だが typeof で型を取るために必要）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const routes = app
   .get("/health", (c) => {
     const { env } = getCloudflareContext();
@@ -98,7 +100,7 @@ const routes = app
         "unknown";
       const { success } = await env.RATE_LIMITER.limit({ key: `verify:${ip}` });
       if (!success) {
-        return c.json({ ok: false, error: "rate_limited" as const }, 429);
+        return c.json({ ok: false as const, error: "rate_limited" as const }, 429);
       }
     }
 
@@ -111,11 +113,11 @@ const routes = app
     }
     const raw = (body as { licenseKey?: unknown } | null)?.licenseKey;
     if (typeof raw !== "string") {
-      return c.json({ ok: false, error: "invalid_request" as const }, 400);
+      return c.json({ ok: false as const, error: "invalid_request" as const }, 400);
     }
     const licenseKey = normalizeLicenseKey(raw);
     if (!isValidLicenseKey(licenseKey)) {
-      return c.json({ ok: false, error: "invalid_format" as const }, 400);
+      return c.json({ ok: false as const, error: "invalid_format" as const }, 400);
     }
 
     // キー存在チェック（紐づくコンテンツも併せて取得）
@@ -136,7 +138,7 @@ const routes = app
       }>();
 
     if (!license) {
-      return c.json({ ok: false, error: "not_found" as const }, 404);
+      return c.json({ ok: false as const, error: "not_found" as const }, 404);
     }
 
     // 3. ブラウザ識別子。既存Cookieがあれば本棚を共有するため再利用する。
@@ -171,7 +173,7 @@ const routes = app
         // 枠が埋まっている。Cookieは変更しない（他の所有CDには影響させない）。
         return c.json(
           {
-            ok: false,
+            ok: false as const,
             error: "device_limit_reached" as const,
             maxDevices: license.maxDevices,
           },
@@ -244,18 +246,18 @@ const routes = app
     const { env } = getCloudflareContext();
     const deviceToken = getCookie(c, DEVICE_TOKEN_COOKIE);
     if (!deviceToken) {
-      return c.json({ ok: false, error: "unauthorized" as const }, 401);
+      return c.json({ ok: false as const, error: "unauthorized" as const }, 401);
     }
     const owned = await findOwnedContent(env.DB, deviceToken, c.req.param("id"));
     if (!owned) {
-      return c.json({ ok: false, error: "not_owned" as const }, 403);
+      return c.json({ ok: false as const, error: "not_owned" as const }, 403);
     }
     if (!owned.downloadKey) {
-      return c.json({ ok: false, error: "download_not_ready" as const }, 409);
+      return c.json({ ok: false as const, error: "download_not_ready" as const }, 409);
     }
     const obj = await env.BUCKET.get(owned.downloadKey);
     if (!obj) {
-      return c.json({ ok: false, error: "file_missing" as const }, 404);
+      return c.json({ ok: false as const, error: "file_missing" as const }, 404);
     }
     const headers = new Headers();
     headers.set(
@@ -276,15 +278,15 @@ const routes = app
     const { env } = getCloudflareContext();
     const deviceToken = getCookie(c, DEVICE_TOKEN_COOKIE);
     if (!deviceToken) {
-      return c.json({ ok: false, error: "unauthorized" as const }, 401);
+      return c.json({ ok: false as const, error: "unauthorized" as const }, 401);
     }
     const owned = await findOwnedContent(env.DB, deviceToken, c.req.param("id"));
     if (!owned) {
-      return c.json({ ok: false, error: "not_owned" as const }, 403);
+      return c.json({ ok: false as const, error: "not_owned" as const }, 403);
     }
     const obj = await env.BUCKET.get(owned.jacketKey);
     if (!obj) {
-      return c.json({ ok: false, error: "file_missing" as const }, 404);
+      return c.json({ ok: false as const, error: "file_missing" as const }, 404);
     }
     const headers = new Headers();
     headers.set(
