@@ -9,6 +9,57 @@ import {
   generateDeviceToken,
 } from "@/lib/device";
 
+// 本棚に並ぶ1コンテンツ分の表示情報（/api/library のレスポンス要素）。
+type LibraryItem = {
+  id: string;
+  title: string;
+  downloadAvailable: boolean;
+};
+
+// 所有検証クエリの戻り（download/jacket 配信で共有）。
+type OwnedContent = {
+  id: string;
+  title: string;
+  downloadKey: string | null;
+  jacketKey: string;
+};
+
+/**
+ * 指定ブラウザ(device_token)が当該コンテンツを所有しているか確認し、
+ * 所有していれば配信に必要なR2キーを返す。未所有なら null。
+ * devices → licenses → contents のJOINで「キーを有効化済みか」を判定する。
+ */
+async function findOwnedContent(
+  db: D1Database,
+  deviceToken: string,
+  contentId: string,
+): Promise<OwnedContent | null> {
+  return db
+    .prepare(
+      `SELECT c.id AS id, c.title AS title,
+              c.download_object_key AS downloadKey, c.jacket_object_key AS jacketKey
+         FROM devices d
+         JOIN licenses l ON l.license_key = d.license_key
+         JOIN contents c ON c.id = l.content_id
+        WHERE d.device_token = ? AND c.id = ?
+        LIMIT 1`,
+    )
+    .bind(deviceToken, contentId)
+    .first<OwnedContent>();
+}
+
+/**
+ * Content-Disposition: attachment ヘッダを組み立てる。
+ * 日本語等の非ASCIIファイル名は filename*（RFC 5987）で渡し、
+ * 互換のため ASCII フォールバックも併記する。
+ */
+function attachmentHeader(filename: string): string {
+  const fallback = filename
+    .replace(/[^\x20-\x7E]/g, "_")
+    .replace(/["\\]/g, "_");
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
 // Honoバックエンド本体。Next.js の Route Handler から handle() 経由で呼ばれる。
 // Cloudflare バインディング(D1: env.DB / R2: env.BUCKET / RATE_LIMITER)へは
 // getCloudflareContext().env からアクセスする。
@@ -154,6 +205,96 @@ const routes = app
         jacketObjectKey: license.jacketObjectKey,
       },
     });
+  })
+  // ────────────────────────────────────────────────────────────────
+  // 本棚（コレクション）。Cookieの device_token に紐付く所有コンテンツ一覧。
+  // Cookie が無い（＝まだ何も認証していない）場合は空配列を返す。
+  // ────────────────────────────────────────────────────────────────
+  .get("/library", async (c) => {
+    const { env } = getCloudflareContext();
+    const deviceToken = getCookie(c, DEVICE_TOKEN_COOKIE);
+    if (!deviceToken) {
+      return c.json({ ok: true as const, items: [] as LibraryItem[] });
+    }
+    const { results } = await env.DB.prepare(
+      `SELECT c.id AS id, c.title AS title,
+              CASE WHEN c.download_object_key IS NOT NULL THEN 1 ELSE 0 END AS downloadAvailable
+         FROM devices d
+         JOIN licenses l ON l.license_key = d.license_key
+         JOIN contents c ON c.id = l.content_id
+        WHERE d.device_token = ?
+        GROUP BY c.id
+        ORDER BY MAX(d.created_at) DESC`,
+    )
+      .bind(deviceToken)
+      .all<{ id: string; title: string; downloadAvailable: number }>();
+    const items: LibraryItem[] = results.map((r) => ({
+      id: r.id,
+      title: r.title,
+      downloadAvailable: r.downloadAvailable === 1,
+    }));
+    return c.json({ ok: true as const, items });
+  })
+  // ────────────────────────────────────────────────────────────────
+  // 一括ダウンロード（zip）。所有検証 → R2から取得しWorker経由でストリーム返却。
+  // UI からは <a href="/api/contents/{id}/download"> で直接叩ける。
+  // （配信方式を後でPresigned URLの302に差し替えてもUIは無変更で済む）
+  // ────────────────────────────────────────────────────────────────
+  .get("/contents/:id/download", async (c) => {
+    const { env } = getCloudflareContext();
+    const deviceToken = getCookie(c, DEVICE_TOKEN_COOKIE);
+    if (!deviceToken) {
+      return c.json({ ok: false, error: "unauthorized" as const }, 401);
+    }
+    const owned = await findOwnedContent(env.DB, deviceToken, c.req.param("id"));
+    if (!owned) {
+      return c.json({ ok: false, error: "not_owned" as const }, 403);
+    }
+    if (!owned.downloadKey) {
+      return c.json({ ok: false, error: "download_not_ready" as const }, 409);
+    }
+    const obj = await env.BUCKET.get(owned.downloadKey);
+    if (!obj) {
+      return c.json({ ok: false, error: "file_missing" as const }, 404);
+    }
+    const headers = new Headers();
+    headers.set(
+      "Content-Type",
+      obj.httpMetadata?.contentType ?? "application/zip",
+    );
+    headers.set("Content-Length", obj.size.toString());
+    headers.set("Content-Disposition", attachmentHeader(`${owned.title}.zip`));
+    headers.set("ETag", obj.httpEtag);
+    headers.set("Cache-Control", "private, no-store");
+    return new Response(obj.body, { headers });
+  })
+  // ────────────────────────────────────────────────────────────────
+  // ジャケット画像。所有検証 → R2から取得しWorker経由で返却。
+  // UI からは <img src="/api/contents/{id}/jacket"> で表示できる。
+  // ────────────────────────────────────────────────────────────────
+  .get("/contents/:id/jacket", async (c) => {
+    const { env } = getCloudflareContext();
+    const deviceToken = getCookie(c, DEVICE_TOKEN_COOKIE);
+    if (!deviceToken) {
+      return c.json({ ok: false, error: "unauthorized" as const }, 401);
+    }
+    const owned = await findOwnedContent(env.DB, deviceToken, c.req.param("id"));
+    if (!owned) {
+      return c.json({ ok: false, error: "not_owned" as const }, 403);
+    }
+    const obj = await env.BUCKET.get(owned.jacketKey);
+    if (!obj) {
+      return c.json({ ok: false, error: "file_missing" as const }, 404);
+    }
+    const headers = new Headers();
+    headers.set(
+      "Content-Type",
+      obj.httpMetadata?.contentType ?? "image/jpeg",
+    );
+    headers.set("Content-Length", obj.size.toString());
+    headers.set("ETag", obj.httpEtag);
+    headers.set("Cache-Control", "private, max-age=3600");
+    return new Response(obj.body, { headers });
   });
 
 export type AppType = typeof routes;
