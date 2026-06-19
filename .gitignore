@@ -17,6 +17,11 @@
 /.next/
 /out/
 
+# cloudflare / opennext
+/.open-next/
+.wrangler/
+cloudflare-env.d.ts
+
 # production
 /build
 
@@ -39,3 +44,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+## pronpt
+ReadClaude.md

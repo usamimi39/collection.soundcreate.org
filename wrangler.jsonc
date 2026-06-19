@@ -1,0 +1,47 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "collection-soundcreate",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2025-09-01",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "collection-soundcreate"
+		}
+	],
+	"images": {
+		"binding": "IMAGES"
+	},
+	// ───────────────────────────────────────────────────────────────
+	// D1: 楽曲・ライセンス等のメタデータDB (contents / tracks / licenses)
+	// `wrangler d1 create collection-db` で発行された database_id を貼る。
+	// ローカル開発(miniflare)はローカルSQLiteを使うため id 未設定でも動作する。
+	// ───────────────────────────────────────────────────────────────
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "collection-db",
+			"database_id": "2f987bca-431c-4e26-9d99-a49562c0c1ab",
+			"migrations_dir": "migrations"
+		}
+	],
+	// ───────────────────────────────────────────────────────────────
+	// R2: 音源ファイル・ジャケット画像の本体を格納する。Egress無料。
+	// `wrangler r2 bucket create collection-audio` で作成。
+	// 直接URLは非公開。Presigned URL を Worker(Hono) 経由で都度発行する。
+	// ───────────────────────────────────────────────────────────────
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "collection-audio"
+		}
+	]
+}
