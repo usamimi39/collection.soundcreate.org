@@ -42,6 +42,13 @@
 		{
 			"binding": "BUCKET",
 			"bucket_name": "collection-audio"
+		},
+		{
+			// OpenNext の ISR/incrementalCache 保存先（open-next.config.ts の
+			// r2IncrementalCache が要求する固定名のバインド）。
+			// 音源/ジャケットとは別の接頭辞で書かれるため同一バケットで問題ない。
+			"binding": "NEXT_INC_CACHE_R2_BUCKET",
+			"bucket_name": "collection-audio"
 		}
 	],
 	// ───────────────────────────────────────────────────────────────
