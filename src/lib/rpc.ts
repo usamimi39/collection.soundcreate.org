@@ -1,5 +1,5 @@
 import { hc } from "hono/client";
-import type { AppType } from "@/app/api/[[...route]]/route";
+import type { AppType } from "@/server/app";
 
 // 型安全な Hono RPC クライアント。
 // バックエンドの route 定義 (AppType) を共有することで、

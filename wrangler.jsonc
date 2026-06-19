@@ -43,5 +43,19 @@
 			"binding": "BUCKET",
 			"bucket_name": "collection-audio"
 		}
+	],
+	// ───────────────────────────────────────────────────────────────
+	// Rate Limiting: 総当たり対策。キー検証APIへのアクセスをIP単位で制限。
+	// simple.period は 10 or 60 秒のみ。ここでは「60秒に10回まで/IP」。
+	// ───────────────────────────────────────────────────────────────
+	"ratelimits": [
+		{
+			"name": "RATE_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		}
 	]
 }
