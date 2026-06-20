@@ -34,22 +34,22 @@ export function Bookshelf({
   }
 
   return (
-    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+    <ul className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
       {items.map((item) => (
-        <li key={item.id} className="flex flex-col gap-2">
+        <li key={item.id} className="flex flex-col items-center gap-2">
           {/* 私有R2のプロキシ画像のため next/image ではなく素の img を使用 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={jacketUrl(item.id)}
             alt={item.title}
             loading="lazy"
-            className="aspect-square w-full rounded object-cover"
+            className="aspect-square w-full rounded border border-zinc-200 object-cover"
           />
           <h3 className="text-sm font-medium">{item.title}</h3>
           {item.downloadAvailable ? (
             <a
               href={downloadUrl(item.id)}
-              className="rounded bg-black px-3 py-1.5 text-center text-sm text-white"
+              className="w-full rounded bg-[#66ccff] px-3 py-1.5 text-center text-sm text-white"
             >
               ダウンロード
             </a>
