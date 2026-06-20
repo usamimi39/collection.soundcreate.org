@@ -64,11 +64,11 @@ export function LicenseKeyForm({ onVerified }: { onVerified: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col items-center gap-3">
       <label htmlFor="license-key" className="text-sm font-medium">
         ライセンスキー
       </label>
-      <div className="flex gap-2">
+      <div className="flex w-full gap-2">
         <input
           id="license-key"
           name="license-key"
@@ -81,12 +81,12 @@ export function LicenseKeyForm({ onVerified }: { onVerified: () => void }) {
           autoCapitalize="characters"
           spellCheck={false}
           inputMode="text"
-          className="rounded border px-3 py-2 font-mono tracking-widest"
+          className="flex-1 rounded border border-zinc-300 px-3 py-2 text-center font-mono tracking-widest outline-none focus:border-[#66ccff]"
         />
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+          className="rounded bg-[#66ccff] px-4 py-2 text-white disabled:opacity-50"
         >
           {submitting ? "確認中…" : "登録"}
         </button>

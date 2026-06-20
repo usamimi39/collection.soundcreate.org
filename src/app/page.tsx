@@ -37,21 +37,21 @@ export default function Home() {
   }, [refresh]);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-12">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center gap-10 bg-white px-6 py-12 text-center">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">My Collection</h1>
+        <h1 className="text-2xl font-semibold">SoundCreate Collection</h1>
         <p className="text-sm text-zinc-500">
-          お持ちのCDのライセンスキーを入力すると、本棚に追加されます。
+          お持ちのCDのライセンスキーを入力すると、コレクションに追加されます。
         </p>
       </header>
 
-      <section>
+      <section className="w-full max-w-sm">
         {/* キー検証に成功したら refresh で本棚を更新 */}
         <LicenseKeyForm onVerified={refresh} />
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">本棚</h2>
+      <section className="flex w-full flex-col items-center gap-4">
+        <h2 className="text-lg font-medium">Collection</h2>
         <Bookshelf items={items} loading={loading} />
       </section>
     </main>
